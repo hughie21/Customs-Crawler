@@ -43,6 +43,8 @@ def get_search_results(keyword, page=1):
 
     result = response.json()
 
+    
+
     if len(result["searchResults"]) == 0:
         return search_result
     
