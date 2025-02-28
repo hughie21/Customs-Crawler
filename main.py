@@ -1,8 +1,10 @@
+import asyncio
 import os
 import pandas as pd
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from spider import get_search_results, get_custom_info
 from spider_se import get_search_result
+from googletrans import Translator
 
 class AppState:
     def __init__(self):
@@ -236,6 +238,83 @@ class DataConcatenator:
 
         del self.state.selected_files[choice]
         return self._show_current_selection()
+    
+class TranslatorManager:
+    def __init__(self, state: AppState):
+        self.state = state
+        self.translator = Translator()
+    
+    def handle_translate(self):
+        UIHelper.clear_screen()
+        files = FileHandler.get_files("./output")
+        self.options = {i+1: v for i,v in enumerate(files)}
+        for i,v in enumerate(files):
+            print(f"[{i+1}] {v}")
+        
+        print("[0] Exit")
+
+        choice = UIHelper.get_valid_input("Enter your choice: ", int, {0, *range(1, len(files)+1)})
+
+        if choice == 0:
+            return self._return_to_main()
+        
+        if choice not in self.options:
+            return self.handle_translate()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(self._translating(self.options[choice]))
+
+    async def _translating(self, file):
+        UIHelper.clear_screen()
+        try:
+            print("\n翻译中...")
+             # 异步翻译函数
+            async def translate_text(text, src_lang, dest_lang):
+                translator = Translator()
+                translation = await translator.translate(text, src=src_lang, dest=dest_lang)
+                return translation.text
+            # 主函数
+            async def main_translate():
+                file_path = f"./output/{file}"
+                df = pd.read_excel(file_path)
+
+                # 检查“产品明细”列是否存在
+                if 'HS Code商品描述' not in df.columns:
+                    print("(翻译失败) 错误：输入文件中没有找到‘HS Code商品描述’列。")
+                    return
+                
+                # 提取“产品明细”列的英文数据
+                english_product_details = df['HS Code商品描述'].tolist()
+
+
+                # 翻译每一项产品明细
+                translated_details = []
+                for i in trange(len(english_product_details)):
+                    detail = english_product_details[i]
+                    try:
+                        if pd.notna(detail):  # 如果单元格不为空
+                            translated = await translate_text(detail, 'en', 'zh-cn')
+                            translated_details.append(translated)
+                        else:
+                            translated_details.append("")  # 空值保持为空
+                    except Exception as e:
+                        translated_details.append(f"翻译失败: {e}")
+                
+                # 将翻译结果添加到数据框
+                df['中文产品明细'] = translated_details
+
+                df.to_excel(file_path, index=False)
+             # 运行异步主函数
+            await main_translate()
+            self._return_to_main()
+        except Exception as e:
+            print(f"\n翻译失败：{e}")
+            self._return_to_main()
+
+    def _return_to_main(self):
+        app = MainApplication()
+        return app.show_main_menu()
 
 class WebSearchManager:
     def __init__(self, state):
@@ -286,6 +365,7 @@ class MainApplication:
         self.search_manager = SearchManager(self.state)
         self.concatenator = DataConcatenator(self.state)
         self.web_search = WebSearchManager(self.state)
+        self.translator = TranslatorManager(self.state)
 
     def show_main_menu(self):
         UIHelper.clear_screen()
@@ -293,7 +373,8 @@ class MainApplication:
 [1] Crawl data
 [2] Concatenate data
 [3] Search for official website
-[4] Quit
+[4] Translate the goods name
+[5] Quit
         """)
         choice = UIHelper.get_valid_input("Enter your choice: ", int, {1, 2, 3, 4})
         
@@ -304,6 +385,8 @@ class MainApplication:
         elif choice == 3:
             self.web_search.handle_search()
         elif choice == 4:
+            self.translator.handle_translate()
+        elif choice == 5:
             exit()
 
     def start_crawling(self):
