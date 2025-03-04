@@ -90,7 +90,7 @@ def get_custom_info(url):
     html = etree.HTML(response.text)
 
     scripts = html.xpath("//script/text()")
-
+    json_str = None
     for i,v in enumerate(scripts):
         if "vendor_table" in v:
             matches = re.search(r"(?<=(self.__next_f.push\())(.*)(?=\))", v)
