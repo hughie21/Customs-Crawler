@@ -1,5 +1,6 @@
 import requests
 import json
+from config import coniguration
 
 def get_company_intro(name, web):
     url = "https://ark.cn-beijing.volces.com/api/v3/bots/chat/completions"
@@ -18,7 +19,7 @@ def get_company_intro(name, web):
     ]
     })
     headers = {
-    'Authorization': 'Bearer 9f67d88d-698e-4221-b285-ff5bbadc9434',
+    'Authorization': f'Bearer {coniguration["api_key"]}',
     'Content-Type': 'application/json'
     }
     try:
@@ -50,7 +51,7 @@ def translate_goods(content):
     ]
     })
     headers = {
-    'Authorization': 'Bearer 9f67d88d-698e-4221-b285-ff5bbadc9434',
+    'Authorization': f'Bearer {coniguration["api_key"]}',
     'Content-Type': 'application/json'
     }
 
