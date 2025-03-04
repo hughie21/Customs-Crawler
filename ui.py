@@ -19,7 +19,7 @@ class DataMerger:
         combined = pd.concat(dfs, ignore_index=True)
         combined.sort_values(by="海关提单时间", ascending=False, inplace=True)
         combined.drop_duplicates(subset=["客户名称"], keep="first", inplace=True)
-        output_path = os.path.join(os.getcwd(), "处理文件.xlsx")
+        output_path = input("Enter the path to save the concatenated data: ")
         combined.to_excel(output_path, index=False)
 
 class FileHandler:

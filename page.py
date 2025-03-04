@@ -1,4 +1,3 @@
-import jieba
 from ui import AppState, DataMerger, UIHelper, FileHandler
 from tqdm import tqdm, trange
 from spider import get_search_results, get_custom_info, get_search_result
@@ -6,9 +5,6 @@ import asyncio
 import pandas as pd
 from googletrans import Translator
 import time
-import sys
-
-import os
 
 class MainApplication:
     def __init__(self):
@@ -16,18 +12,18 @@ class MainApplication:
         self.search_manager = SearchManager(self.state)
         self.concatenator = DataConcatenator(self.state)
         self.web_search = WebSearchManager(self.state)
-        self.hebin = hebin(self.state)
+        self.translator = TranslatorManager(self.state)
 
     def show_main_menu(self):
         UIHelper.clear_screen()
         print("""
-[1] 爬取数据
-[2] 连接数据
-[3] 搜索官方网站
-[4] 数据处理
-[5] 退出
+[1] Crawl data
+[2] Concatenate data
+[3] Search for official website
+[4] Translate the goods name
+[5] Quit
         """)
-        choice = UIHelper.get_valid_input("Enter your choice: ", int, {1, 2, 3, 4,5})
+        choice = UIHelper.get_valid_input("Enter your choice: ", int, {1, 2, 3, 4})
         
         if choice == 1:
             self.start_crawling()
@@ -36,18 +32,44 @@ class MainApplication:
         elif choice == 3:
             self.web_search.handle_search()
         elif choice == 4:
-            a = self.hebin
-            a.main()
+            self.translator.handle_translate()
         elif choice == 5:
             exit()
 
     def start_crawling(self):
         UIHelper.clear_screen()
-
         print("""
-[E] 返回主菜单
+$$$$$$\                                               $$\     $$\     $$\             $$\     $$\ 
+\_$$  _|                                              $$ |    \$$\   $$  |            $$ |    \__|
+  $$ |  $$$$$$\$$$$\   $$$$$$\   $$$$$$\   $$$$$$\  $$$$$$\    \$$\ $$  /  $$$$$$\  $$$$$$\   $$\ 
+  $$ |  $$  _$$  _$$\ $$  __$$\ $$  __$$\ $$  __$$\ \_$$  _|    \$$$$  /  $$  __$$\ \_$$  _|  $$ |
+  $$ |  $$ / $$ / $$ |$$ /  $$ |$$ /  $$ |$$ |  \__|  $$ |       \$$  /   $$$$$$$$ |  $$ |    $$ |
+  $$ |  $$ | $$ | $$ |$$ |  $$ |$$ |  $$ |$$ |        $$ |$$\     $$ |    $$   ____|  $$ |$$\ $$ |
+$$$$$$\ $$ | $$ | $$ |$$$$$$$  |\$$$$$$  |$$ |        \$$$$  |    $$ |    \$$$$$$$\   \$$$$  |$$ |
+\______|\__| \__| \__|$$  ____/  \______/ \__|         \____/     \__|     \_______|   \____/ \__|
+                      $$ |                                                                        
+                      $$ |                                                                        
+                      \__|                                                                        
 """)
-        keyword = input("输入搜索词语: ")
+        print("""
+Operator\tFunction
+          
+""\tReturns results with the exact term or phrase
+          
+| (OR)\tReturns results with either of the terms used
+          
++ (AND)\tReturns results with both terms used
+          
+-\tReturns results without the term used
+          
+*\tActs as a placeholder for any term or phrase, like fill in the blanks.
+
+()\tGroups multiple operators for a more refined search.
+
+========================================================================================================
+[E] Return to main menu
+""")
+        keyword = input("Enter the search keyword: ")
         if keyword.upper() == 'E':
             return self.show_main_menu()
         self.search_manager.handle_search(keyword)
@@ -118,12 +140,11 @@ class SearchManager:
             print(text)
         
         print("==============Commands======================")
-        print("[E] 返回查询")
-        print("[C] 显示当前选择")
-        print("[P] 上一页")
-        print("[N] 下一页")
-        print("[D] 删除数据")
-        print("[R] 获取所有选定数据的自定义信息")
+        print("[E] Return to search")
+        print("[C] Show Current Selection")
+        print("[P] Previous Page")
+        print("[N] Next Page")
+        print("[R] Get all selected data's custom info")
 
         print("==============Selected Options======================")
         for i,v in enumerate(list(self.state.selected_companies.keys())):
@@ -209,10 +230,10 @@ class DataConcatenator:
             print(f"[{i}] {v}")
         print("")
         print("==============Commands======================")
-        print("[A] 选择全部")
-        print("[C] 显示当前选择")
-        print("[R] 执行连接")
-        print("[E] 返回主菜单")
+        print("[A] Select all")
+        print("[C] Show Current Selection")
+        print("[R] Execute Concatenation")
+        print("[E] Return to main menu")
 
         print("")
         print("==============Selected Options======================")
@@ -245,184 +266,59 @@ class DataConcatenator:
         del self.state.selected_files[choice]
         return self._show_current_selection()
     
-class hebin:
+class TranslatorManager:
     def __init__(self, state: AppState):
         self.state = state
-        #  英文关键词放置
-        self.books_keywords = [
-            "paper", "gift", "books", "Printde Books", "Children Book", "Printed Cards"
-        ]
-        # 定义中文相关的关键词
-        self.chinese_books_keywords = ["书", "书籍", "儿童书", "绘本", "儿童读物", "学生用品", "笔记本"]
+        self.translator = Translator()
+    
+    def handle_translate(self):
+        UIHelper.clear_screen()
+        files = FileHandler.get_files("./output")
+        self.options = {i+1: v for i,v in enumerate(files)}
+        for i,v in enumerate(files):
+            print(f"[{i+1}] {v}")
+        
+        print("[0] Exit")
 
-    # 去除重复元素
-    def remove_duplicates(self,lst):
-        seen = set()
-        return [x for x in lst if not (x in seen or seen.add(x))]
+        choice = UIHelper.get_valid_input("Enter your choice: ", int, {0, *range(1, len(files)+1)})
 
-    def chinese_process_data(self):
+        if choice == 0:
+            return self._return_to_main()
+        
+        if choice not in self.options:
+            return self.handle_translate()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(self._translating(self.options[choice]))
+
+    async def _translating(self, file):
+        UIHelper.clear_screen()
         try:
-            print("\n=== 分词处理并提取与书籍相关的关键词 ===")
-            # 读取合并结果文件
-            file_path = '翻译结果.xlsx'  # 输入文件路径
-            df = pd.read_excel(file_path)
-
-            # 检查“中文产品明细”列是否存在
-            if '中文产品明细' not in df.columns:
-                print("(处理失败) 错误：输入文件中没有找到‘中文产品明细’列。")
-                return
-
-            # 定义提取与书籍相关单词的函数
-            def extract_books(text):
-                if pd.notna(text):  # 如果单元格不为空
-                    words = jieba.lcut(text)  # 使用 jieba 进行分词
-                    # 提取与书籍相关的关键词（根据匹配库）
-                    related_words = [word for word in words if word in self.chinese_books_keywords]
-                    # 去除重复的单词
-                    unique_words = self.remove_duplicates(related_words)
-                    return ' '.join(unique_words)  # 返回提取的关键词
-                else:
-                    return ""  # 空值保持为空
-
-            # 对“中文产品明细”列进行分词处理并提取相关关键词
-            df['关键词'] = df['中文产品明细'].apply(extract_books)
-
-            # 保存到新的 Excel 文件
-            output_path = '中文分词结果.xlsx'  # 输出文件路径
-            df.to_excel(output_path, index=False)
-            print(f"处理完成，结果已保存到 {output_path}！")
-        except Exception as e:
-            print(f"\n处理失败：{e}")
-
-    # 分词处理并提取与 books 相关的单词
-    def process_data(self):
-        try:
-            print("\n=== 分词处理并提取与 books 相关的单词 ===")
-            # 读取合并结果文件
-            file_path = '处理文件.xlsx'  # 输入文件路径
-            df = pd.read_excel(file_path)
-
-            # 检查“HS Code商品描述”列是否存在
-            if 'HS Code商品描述' not in df.columns:
-                print("(处理失败) 错误：输入文件中没有找到‘HS Code商品描述’列。")
-                return
-
-            # 定义提取与 books 相关单词的函数
-            def extract_books(text):
-                if pd.notna(text):  # 如果单元格不为空
-                    words = jieba.lcut(text)  # 使用 jieba 进行分词
-                    # 提取与 books 相关的单词（根据匹配库）
-                    related_words = [word for word in words if word.lower() in self.books_keywords]
-                    # 去除重复的单词
-                    unique_words = self.remove_duplicates(related_words)
-                    return ' '.join(unique_words)  # 返回提取的单词
-                else:
-                    return ""  # 空值保持为空
-
-            # 对“HS Code商品描述”列进行分词处理并提取相关单词
-            df['关键词'] = df['HS Code商品描述'].apply(extract_books)
-
-            # 保存到新的 Excel 文件
-            output_path = '英文分词结果.xlsx'  # 输出文件路径
-            df.to_excel(output_path, index=False)
-            print(f"处理完成，结果已保存到 {output_path}！")
-        except Exception as e:
-            print(f"\n处理失败：{e}")
-
-    async def translatefenci_data(self):
-        try:
-            print("\n=== 翻译数据 ===")
-
-            # 异步翻译函数
+            print("\n翻译中...")
+             # 异步翻译函数
             async def translate_text(text, src_lang, dest_lang):
                 translator = Translator()
                 translation = await translator.translate(text, src=src_lang, dest=dest_lang)
                 return translation.text
-
             # 主函数
             async def main_translate():
-                # 读取Excel文件
-                file_path = '英文分词结果.xlsx'  # 输入文件路径
-                df = pd.read_excel(file_path)
-
-                # 检查“产品明细”列是否存在
-                if '关键词' not in df.columns:
-                    print("(翻译失败) 错误：输入文件中没有找到‘关键词’列。")
-                    return
-
-                # 提取“产品明细”列的英文数据
-                english_product_details = df['关键词'].tolist()
-
-                # 翻译每一项产品明细
-                translated_details = []
-                for detail in english_product_details:
-                    try:
-                        if pd.notna(detail):  # 如果单元格不为空
-                            translated = await translate_text(detail, 'en', 'zh-cn')
-                            translated_details.append(translated)
-                        else:
-                            translated_details.append("")  # 空值保持为空
-                    except Exception as e:
-                        translated_details.append(f"翻译失败: {e}")
-
-                # 将翻译结果添加到数据框
-                df['中文产品明细'] = translated_details
-
-                # 保存到新的Excel文件
-                output_path = '分词翻译结果.xlsx'  # 输出文件路径
-                df.to_excel(output_path, index=False)
-                print(f"翻译完成，结果已保存到 {output_path}！")
-
-            # 运行异步主函数
-            await main_translate()
-        except Exception as e:
-            print(f"\n翻译失败：{e}")
-
-    def merge_data(self):
-        try:
-            print("\n=== 数据合并 ===")
-            # 读取文件1和文件2
-            file1 = pd.read_excel('数据官网.xlsx')  # 文件1包含官网和简介
-            file2 = pd.read_excel('处理文件.xlsx')  # 文件3为你从海关获取的数据需要填充官网和简介
-
-            # 合并文件1和文件2，基于“供应商公司名称”列，保留文件2的所有数据
-            merged_file = pd.merge(file2, file1[['客户名称', '公司官网', '公司简介']],
-                                   on='客户名称', how='left')
-
-            # 将合并后的结果保存为新的Excel文件
-            merged_file.to_excel('合并结果.xlsx', index=False)
-            print("数据合并完成，结果已保存到 '合并结果.xlsx'！")
-        except Exception as e:
-            print(f"\n数据合并失败：{e}")
-
-    # 翻译数据功能
-    async def translate_data(self):
-        try:
-            print("\n=== 翻译数据 ===")
-
-            # 异步翻译函数
-            async def translate_text(text, src_lang, dest_lang):
-                translator = Translator()
-                translation = await translator.translate(text, src=src_lang, dest=dest_lang)
-                return translation.text
-
-            # 主函数
-            async def main_translate():
-                # 读取Excel文件
-                file_path = '合并结果.xlsx'  # 输入文件路径
+                file_path = f"./output/{file}"
                 df = pd.read_excel(file_path)
 
                 # 检查“产品明细”列是否存在
                 if 'HS Code商品描述' not in df.columns:
                     print("(翻译失败) 错误：输入文件中没有找到‘HS Code商品描述’列。")
                     return
-
+                
                 # 提取“产品明细”列的英文数据
                 english_product_details = df['HS Code商品描述'].tolist()
 
+
                 # 翻译每一项产品明细
                 translated_details = []
-                for detail in english_product_details:
+                for i in trange(len(english_product_details)):
+                    detail = english_product_details[i]
                     try:
                         if pd.notna(detail):  # 如果单元格不为空
                             translated = await translate_text(detail, 'en', 'zh-cn')
@@ -431,46 +327,21 @@ class hebin:
                             translated_details.append("")  # 空值保持为空
                     except Exception as e:
                         translated_details.append(f"翻译失败: {e}")
-
+                
                 # 将翻译结果添加到数据框
                 df['中文产品明细'] = translated_details
 
-                # 保存到新的Excel文件
-                output_path = '翻译结果.xlsx'  # 输出文件路径
-                df.to_excel(output_path, index=False)
-                print(f"翻译完成，结果已保存到 {output_path}！")
-
-            # 运行异步主函数
+                df.to_excel(file_path, index=False)
+             # 运行异步主函数
             await main_translate()
+            self._return_to_main()
         except Exception as e:
             print(f"\n翻译失败：{e}")
+            self._return_to_main()
 
-    # 主程序
-    def main(self):
-        while True:
-            print("请选择要执行的功能:")
-            print("1. 数据合并")
-            print("2. 翻译数据")
-            print("3. 英文分词处理")
-            print("4. 英文分词翻译")
-            print("5. 中文分词处理")
-            print("6. 退出程序")
-            choice = input("\n输入选项（1、2、3、4 ,5或 6！）：")
-            if choice == '1':
-                self.merge_data()
-            elif choice == '2':
-                asyncio.run(self.translate_data())
-            elif choice == '3':
-                self.process_data()
-            elif choice == '4':
-                asyncio.run(self.translatefenci_data())
-            elif choice == '5':
-                self.chinese_process_data()
-            elif choice == '6':
-                print("\n程序已退出。")
-                sys.exit()  # 退出程序
-            else:
-                print("无效的选项，请输入 1、2、3、4 或 5！")
+    def _return_to_main(self):
+        app = MainApplication()
+        return app.show_main_menu()
 
 class WebSearchManager:
     def __init__(self, state):
