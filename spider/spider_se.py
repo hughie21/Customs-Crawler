@@ -1,3 +1,4 @@
+import asyncio
 import time
 import requests
 from lxml import etree
@@ -67,6 +68,11 @@ def get_search_result(keyword: str):
     except:
         return ""
     return ""
+
+async def get_search_result_async(keyword):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, get_search_result, keyword)
+    return result
 
 if __name__ == "__main__":
     data = pd.read_excel("莫斯科书展(manilabookfair.com)-53.xlsx")

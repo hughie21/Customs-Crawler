@@ -1,3 +1,4 @@
+import asyncio
 import requests
 import json
 from config import coniguration
@@ -67,3 +68,13 @@ def translate_goods(content):
     content = data["choices"][0]["message"]["content"].replace("\n", "")
 
     return content
+
+async def translate_goods_async(content):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, translate_goods, content)
+    return result
+
+async def get_company_intro_async(name, web):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, get_company_intro, name, web)
+    return result
