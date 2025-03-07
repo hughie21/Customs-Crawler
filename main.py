@@ -74,7 +74,7 @@ class SearchReult(Screen):
                 text = "[{index}] {name} - {country} - {type} 最新交易时间：{time} 总交易量：{shipment}"
                 yield Checkbox(text.format(index=i+1, name=result["name"], country=result["country"], type=result["type"], time=result["time"], shipment=result["total"]), id=f"r{i+1}")
         with HorizontalScroll():
-            yield Button("爬取详情", id="detail_button", variant="primary")
+            yield Button("爬取详情", id="detail_button", variant="primary", disabled=True)
         yield Footer()
     
     def on_mount(self) -> None:
@@ -88,6 +88,11 @@ class SearchReult(Screen):
             state.selected_companies[f'{state.customs_result_list[index-1]["name"]}-{state.customs_result_list[index-1]["country"]}'] = state.customs_result_list[index-1]['url']
         else:
             del state.selected_companies[f'{state.customs_result_list[index-1]["name"]}-{state.customs_result_list[index-1]["country"]}']
+        
+        if len(state.selected_companies) > 0:
+            self.query_one("#detail_button").disabled = False
+        else:
+            self.query_one("#detail_button").disabled = True
     
     @on(Button.Pressed, "#detail_button")
     def detail_button_pressed(self, event: Button.Pressed):
@@ -115,16 +120,40 @@ class SearchingScreen(Screen):
     ]
 
     def compose(self):
+        self.keyword = ""
+        self.page = ""
         yield Header()
         yield Label(self.SEARCHING_COMMANDS)
         with HorizontalScroll():
             yield Input(id="search_input", placeholder="输入搜索关键词")
             yield Input(id="page_num", type="number", placeholder="输入页数")
-            yield Button("搜索", id="search_button", variant="primary")
+            yield Button("搜索", id="search_button", variant="primary", disabled=True)
         yield Footer()
     
     def on_mount(self) -> None:
         self.title = "爬取importyeti"
+
+    @on(Input.Changed, "#search_input")
+    async def search_input_changed(self, event: Input.Changed):
+        if event.value:
+            self.keyword = event.value
+            if self.keyword and self.page:
+                self.query_one("#search_button").disabled = False
+            else:
+                self.query_one("#search_button").disabled = True
+        else:
+            self.query_one("#search_button").disabled = True
+    
+    @on(Input.Changed, "#page_num")
+    async def page_input_changed(self, event: Input.Changed):
+        if event.value:
+            self.page = event.value
+            if self.keyword and self.page:
+                self.query_one("#search_button").disabled = False
+            else:
+                self.query_one("#search_button").disabled = True
+        else:
+            self.query_one("#search_button").disabled = True
 
     @on(Button.Pressed, "#search_button")
     async def search_button_pressed(self, event: Button.Pressed):
@@ -152,14 +181,21 @@ class ConcateManger(Screen):
                     f"[{i+1}] {v}",
                     id=f"f{i}"
                 )
-        yield Button("合并", id="concat_button", variant="primary")
+        yield Button("合并", id="concat_button", variant="primary", disabled=True)
         with Container(id="output_input_container", classes="hidden"):
             yield Input(id="output_input", placeholder="输出文件名")
-            yield Button("保存", id="save_button", variant="primary")
+            yield Button("保存", id="save_button", variant="primary", disabled=True)
         yield Footer()
 
     def on_mount(self) -> None:
         self.title = "合并数据文件"
+
+    @on(Input.Changed, "#output_input")
+    def output_input_changed(self, event: Input.Changed):
+        if event.value:
+            self.query_one("#save_button").disabled = False
+        else:
+            self.query_one("#save_button").disabled = True
     
     @on(Checkbox.Changed)
     def save_selection(self, event: Checkbox.Changed):
@@ -168,6 +204,10 @@ class ConcateManger(Screen):
             self.SELECTED_FILES.append(self.FILES[index])
         else:
             self.SELECTED_FILES.remove(self.FILES[index])
+        if len(self.SELECTED_FILES) < 2:
+            self.query_one("#concat_button").disabled = True
+        else:
+            self.query_one("#concat_button").disabled = False
     
     @on(Button.Pressed, "#concat_button")
     def concat_button_pressed(self, event: Button.Pressed):
