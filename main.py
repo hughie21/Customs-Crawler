@@ -34,7 +34,7 @@ class FileHandler:
 # 第一个选项
 class DetailSearching(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -64,7 +64,7 @@ class DetailSearching(Screen):
 
 class SearchReult(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -116,7 +116,7 @@ class SearchingScreen(Screen):
 ()        分组搜索
 """
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -166,7 +166,7 @@ class SearchingScreen(Screen):
 # 第二个选项
 class ConcateManger(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     SELECTED_FILES = []
@@ -175,16 +175,18 @@ class ConcateManger(Screen):
     def compose(self):
         self.FILES = FileHandler.get_files("./data")
         yield Header()
-        with VerticalScroll():
+        with VerticalScroll(id="concat_option_container", disabled=False):
             for i, v in enumerate(self.FILES):
                 yield Checkbox(
                     f"[{i+1}] {v}",
                     id=f"f{i}"
                 )
-        yield Button("合并", id="concat_button", variant="primary", disabled=True)
+        yield Button("合并", id="concat_button", variant="primary", disabled=True, classes="inline_buttom")
         with Container(id="output_input_container", classes="hidden"):
             yield Input(id="output_input", placeholder="输出文件名")
-            yield Button("保存", id="save_button", variant="primary", disabled=True)
+            with HorizontalScroll():
+                yield Button("保存", id="save_button", variant="primary", disabled=True, classes="inline_buttom")
+                yield Button("取消", id="cancel_button", variant="warning", classes="inline_buttom")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -204,18 +206,24 @@ class ConcateManger(Screen):
             self.SELECTED_FILES.append(self.FILES[index])
         else:
             self.SELECTED_FILES.remove(self.FILES[index])
-        if len(self.SELECTED_FILES) < 2:
+        if len(self.SELECTED_FILES) < 1:
             self.query_one("#concat_button").disabled = True
         else:
             self.query_one("#concat_button").disabled = False
     
+    @on(Button.Pressed, "#cancel_button")
+    def cancel_button_pressed(self, event: Button.Pressed):
+        self.query_one("#output_input_container").add_class("hidden")
+        self.query_one("#concat_button").remove_class("hidden")
+        self.query_one("#concat_option_container").disabled = False
+
     @on(Button.Pressed, "#concat_button")
     def concat_button_pressed(self, event: Button.Pressed):
         full_paths = FileHandler.get_full_paths("./data", self.SELECTED_FILES)
         self.OUTPUT_DATA = DataMerger.merge_excel_files(full_paths)
-
-        self.query_one("#concat_button").remove()
+        self.query_one("#concat_button").add_class("hidden")
         self.query_one("#output_input_container").remove_class("hidden")
+        self.query_one("#concat_option_container").disabled = True
 
     @on(Button.Pressed, "#save_button")
     def save_button_pressed(self, event: Button.Pressed):
@@ -226,7 +234,7 @@ class ConcateManger(Screen):
 # 第三个选项
 class WebSearching(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -256,7 +264,7 @@ class WebSearching(Screen):
 
 class WebSearchManager(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -264,7 +272,7 @@ class WebSearchManager(Screen):
         yield Header()
         yield DirectoryTree("./output", id="ws_directory_tree", classes="tree")
         with Center():
-            yield Button("查找", id="search_button", variant="primary", disabled=True)
+            yield Button("查找", id="search_button", classes="inline_buttom" ,variant="primary", disabled=True)
         yield Footer()
     
     def on_mount(self) -> None:
@@ -282,7 +290,7 @@ class WebSearchManager(Screen):
 # 第四个选项
 class Translating(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -318,7 +326,7 @@ class Translating(Screen):
 
 class TranslatorManager(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -326,7 +334,7 @@ class TranslatorManager(Screen):
         yield Header()
         yield DirectoryTree("./output", id="ts_directory_tree", classes="tree")
         with Center():
-            yield Button("翻译", id="trans_button", variant="primary", disabled=True)
+            yield Button("翻译", id="trans_button", variant="primary", disabled=True, classes="inline_buttom")
         yield Footer()
     
     def on_mount(self) -> None:
@@ -344,7 +352,7 @@ class TranslatorManager(Screen):
 # 第五个选项
 class IntroGenerating(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -377,7 +385,7 @@ class IntroGenerating(Screen):
     
 class IntroGenerator(Screen):
     BINDINGS = [
-        ("ctrl+e", "app.pop_screen", "返回上一页"),
+        ("escape", "app.pop_screen", "返回上一页"),
     ]
 
     def compose(self):
@@ -385,7 +393,7 @@ class IntroGenerator(Screen):
         yield Header()
         yield DirectoryTree("./output", id="intro_directory_tree", classes="tree")
         with Center():
-            yield Button("AI生成简介", id="intro_button", variant="primary", disabled=True)
+            yield Button("AI生成简介", id="intro_button", variant="primary", disabled=True, classes="inline_buttom")
         yield Footer()
     
     def on_mount(self) -> None:

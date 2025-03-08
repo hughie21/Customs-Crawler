@@ -21,3 +21,11 @@
 #main_menu {
     height: 10;
 }
+
+#concat_option_container {
+    height: 20;
+}
+
+.inline_buttom {
+    margin: 1;
+}
