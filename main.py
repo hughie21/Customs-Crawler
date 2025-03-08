@@ -59,6 +59,7 @@ class DetailSearching(Screen):
             self.query_one("#crawling_progress").advance(1)
         
         time.sleep(2)
+        state.clean()
         app.pop_screen()
         app.uninstall_screen("detail_searching")
 
