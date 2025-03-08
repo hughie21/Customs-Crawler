@@ -65,30 +65,45 @@ class DetailSearching(Screen):
 
 class SearchReult(Screen):
     BINDINGS = [
-        ("escape", "app.pop_screen", "返回上一页"),
+        ("escape", "", "返回上一页")
     ]
 
+    show_sidebar = reactive(False)
+
     def compose(self):
+        if state.page not in state.selection_for_page:
+            state.selection_for_page[state.page] = []
         yield Header()
         with VerticalScroll(id="result"):
             for i, result in enumerate(state.customs_result_list):
                 text = "[{index}] {name} - {country} - {type} 最新交易时间：{time} 总交易量：{shipment}"
                 yield Checkbox(text.format(index=i+1, name=result["name"], country=result["country"], type=result["type"], time=result["time"], shipment=result["total"]), id=f"r{i+1}")
         with HorizontalScroll():
-            yield Button("爬取详情", id="detail_button", variant="primary", disabled=True)
+            yield Button("上一页", id="prev_button", variant="primary", disabled=state.page == 1)
+            yield Button("下一页", id="next_button", variant="primary")
+            yield Button("爬取详情", id="detail_button", variant="primary", disabled=len(state.selected_companies) == 0)
         yield Footer()
     
     def on_mount(self) -> None:
         self.title = "搜索结果"
         self.sub_title = f"第{state.page}页"
 
+        current_page_selection = state.selection_for_page[state.page]
+        if len(current_page_selection) == 0:
+            return
+        for id in current_page_selection:
+            checkbox = self.query_one(f"#{id}")
+            checkbox.value = True
+    
     @on(Checkbox.Changed)
     def save_selection(self, event: Checkbox.Changed) -> None:
         index = int(event.checkbox.id[1:])
         if event.value:
+            state.selection_for_page[state.page].append(event.checkbox.id)
             state.selected_companies[f'{state.customs_result_list[index-1]["name"]}-{state.customs_result_list[index-1]["country"]}'] = state.customs_result_list[index-1]['url']
         else:
             del state.selected_companies[f'{state.customs_result_list[index-1]["name"]}-{state.customs_result_list[index-1]["country"]}']
+            state.selection_for_page[state.page].remove(event.checkbox.id)
         
         if len(state.selected_companies) > 0:
             self.query_one("#detail_button").disabled = False
@@ -99,6 +114,24 @@ class SearchReult(Screen):
     def detail_button_pressed(self, event: Button.Pressed):
         app.pop_screen()
         app.push_screen(DetailSearching())
+    
+    @on(Button.Pressed, "#prev_button")
+    async def prev_button_pressed(self, event: Button.Pressed):
+        await self.change_page(-1)
+    
+    @on(Button.Pressed, "#next_button")
+    async def next_button_pressed(self, event: Button.Pressed):
+        await self.change_page(1)
+    
+    async def change_page(self, direction: int):
+        state.page = max(1, state.page + direction)
+        state.customs_result_list = await get_search_results_async(state.keyword, state.page)
+        app.switch_screen(SearchReult())
+
+    def on_key(self, event: events.Key) -> None:
+        if event.key == "escape":
+            state.clean()
+            app.switch_screen(SearchingScreen())
 
 class SearchingScreen(Screen):
     SEARCHING_COMMANDS = """
@@ -121,13 +154,10 @@ class SearchingScreen(Screen):
     ]
 
     def compose(self):
-        self.keyword = ""
-        self.page = ""
         yield Header()
         yield Label(self.SEARCHING_COMMANDS)
         with HorizontalScroll():
             yield Input(id="search_input", placeholder="输入搜索关键词")
-            yield Input(id="page_num", type="number", placeholder="输入页数")
             yield Button("搜索", id="search_button", variant="primary", disabled=True)
         yield Footer()
     
@@ -135,24 +165,9 @@ class SearchingScreen(Screen):
         self.title = "爬取importyeti"
 
     @on(Input.Changed, "#search_input")
-    async def search_input_changed(self, event: Input.Changed):
+    def search_input_changed(self, event: Input.Changed):
         if event.value:
-            self.keyword = event.value
-            if self.keyword and self.page:
-                self.query_one("#search_button").disabled = False
-            else:
-                self.query_one("#search_button").disabled = True
-        else:
-            self.query_one("#search_button").disabled = True
-    
-    @on(Input.Changed, "#page_num")
-    async def page_input_changed(self, event: Input.Changed):
-        if event.value:
-            self.page = event.value
-            if self.keyword and self.page:
-                self.query_one("#search_button").disabled = False
-            else:
-                self.query_one("#search_button").disabled = True
+            self.query_one("#search_button").disabled = False
         else:
             self.query_one("#search_button").disabled = True
 
@@ -160,7 +175,6 @@ class SearchingScreen(Screen):
     async def search_button_pressed(self, event: Button.Pressed):
         search_query = self.query_one("#search_input").value
         state.keyword = search_query
-        state.page = self.query_one("#page_num").value
         state.customs_result_list = await get_search_results_async(state.keyword, state.page)
         app.push_screen(SearchReult())
 
