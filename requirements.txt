@@ -1,0 +1,8 @@
+cloudscraper==1.2.71
+lxml==4.9.2
+pandas==1.5.2
+PyYAML==6.0
+PyYAML==6.0.2
+Requests==2.32.3
+textual==2.1.2
+tqdm==4.65.0
