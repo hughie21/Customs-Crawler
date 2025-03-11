@@ -1,1 +1,1 @@
-from config.config import coniguration
+from config.config import config

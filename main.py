@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, OptionList ,Label, Button, Input, Checkbox, ProgressBar, DirectoryTree
@@ -12,6 +13,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 import pandas as pd
 from textual import work
+from config import config
 
 class DataMerger:
     @staticmethod
@@ -55,7 +57,11 @@ class DetailSearching(Screen):
     async def runing(self):
         for i, (key, value) in enumerate(state.selected_companies.items()):
             data = await get_custom_info_async("https://www.importyeti.com/" + value)
-            data.to_excel(f"./data/{key}.xlsx", index=False)
+            if data is not None:
+                sanitized_key = re.sub(r"[\/\\\:\*\?\"\<\>\|]", " ", key)
+                data.to_excel(f"./data/{sanitized_key}.xlsx", index=False)
+            else:
+                print(f"爬取失败：{key}")
             self.query_one("#crawling_progress").advance(1)
         
         time.sleep(2)
@@ -184,10 +190,10 @@ class ConcateManger(Screen):
         ("escape", "app.pop_screen", "返回上一页"),
     ]
 
-    SELECTED_FILES = []
-    OUTPUT_DATA = ""
 
     def compose(self):
+        self.SELECTED_FILES = []
+        self.OUTPUT_DATA = ""
         self.FILES = FileHandler.get_files("./data")
         yield Header()
         with VerticalScroll(id="concat_option_container", disabled=False):
@@ -243,6 +249,7 @@ class ConcateManger(Screen):
     @on(Button.Pressed, "#save_button")
     def save_button_pressed(self, event: Button.Pressed):
         output_file_name = self.query_one("#output_input").value
+        state.clean()
         self.OUTPUT_DATA.to_excel(f"./output/{output_file_name}.xlsx", index=False)
         app.pop_screen()
 
@@ -397,7 +404,7 @@ class IntroGenerating(Screen):
         self.title = "简介生成中"
         self.sub_title = f"正在生成{len(self.names)}条简介"
         self.runing()
-    
+
 class IntroGenerator(Screen):
     BINDINGS = [
         ("escape", "app.pop_screen", "返回上一页"),
@@ -423,6 +430,67 @@ class IntroGenerator(Screen):
     def search_button_pressed(self, event: Button.Pressed):
         app.push_screen(IntroGenerating())
 
+# 第六个选项
+class InputWithLabel(Widget):
+    """An input with a label."""
+
+    DEFAULT_CSS = """
+    InputWithLabel {
+        layout: horizontal;
+        height: auto;
+    }
+    InputWithLabel Label {
+        padding: 1;
+        width: 12;
+        text-align: right;
+    }
+    InputWithLabel Input {
+        width: 1fr;
+    }
+    """
+
+    BINDINGS = [
+        ("ctrl+delete", "clear_all", "清空输入"),
+    ]
+
+    def __init__(self, input_label: str, id: str = "", default_value: str = "") -> None:
+        self.input_label = input_label
+        self.default_value = default_value
+        self.ids = id
+        super().__init__()
+
+    def compose(self) -> ComposeResult:  
+        yield Label(self.input_label)
+        yield Input(value=self.default_value, id=self.ids)
+    
+    def action_clear_all(self) -> None:
+        self.query_one(Input).clear()
+
+class Setting(Screen):
+    BINDINGS = [
+        ("escape", "app.pop_screen", "返回上一页"),
+    ]
+    def compose(self):
+        yield Header()
+        yield InputWithLabel("API Key", id="api_key", default_value=config.api_key)
+        yield InputWithLabel("Importyeti Cookie - 列表搜索", id="importyeti_cookie_searching", default_value=config.importyeti_cookie_searching)
+        yield InputWithLabel("Importyeti Cookie - 详情搜索", id="importyeti_cookie_details", default_value=config.importyeti_cookie_details)
+        yield InputWithLabel("Bing Cookie", id="bing_cookie", default_value=config.bing_cookie)
+        yield Button("保存", id="config_save_button", variant="primary", classes="inline_buttom")
+        yield Footer()
+    
+    def on_mount(self):
+        self.title = "设置"
+        print(config.api_key)
+
+    @on(Button.Pressed, "#config_save_button")
+    def on_save_button_pressed(self, event: Button.Pressed):
+        config.api_key = self.query_one("#api_key").value
+        config.importyeti_cookie_searching = self.query_one("#importyeti_cookie_searching").value
+        config.importyeti_cookie_details = self.query_one("#importyeti_cookie_details").value
+        config.bing_cookie = self.query_one("#bing_cookie").value
+        config.save()
+
 class MainApplication(App):
     CSS_PATH = "style.css"
     BINDINGS = [
@@ -442,6 +510,7 @@ class MainApplication(App):
                 Option("官网查找", id="offi"),
                 Option("产品翻译", id="trans"),
                 Option("简介生成", id="intro"),
+                Option("设置", id="setting"),
                 Option("退出", id="quit"),
                 id="main_menu",
             )
@@ -461,6 +530,8 @@ class MainApplication(App):
             self.push_screen(TranslatorManager())
         elif event.option.id == "intro":
             self.push_screen(IntroGenerator())
+        elif event.option.id == "setting":
+            self.push_screen(Setting())
         elif event.option.id == "quit":
             app.exit()
         

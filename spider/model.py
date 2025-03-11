@@ -1,7 +1,7 @@
 import asyncio
 import requests
 import json
-from config import coniguration
+from config import config
 
 def get_company_intro(name, web):
     url = "https://ark.cn-beijing.volces.com/api/v3/bots/chat/completions"
@@ -20,7 +20,7 @@ def get_company_intro(name, web):
     ]
     })
     headers = {
-    'Authorization': f'Bearer {coniguration["api_key"]}',
+    'Authorization': f'Bearer {config.api_key}',
     'Content-Type': 'application/json'
     }
     try:
@@ -52,7 +52,7 @@ def translate_goods(content):
     ]
     })
     headers = {
-    'Authorization': f'Bearer {coniguration["api_key"]}',
+    'Authorization': f'Bearer {config.api_key}',
     'Content-Type': 'application/json'
     }
 

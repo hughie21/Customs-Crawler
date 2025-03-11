@@ -5,6 +5,7 @@ import re
 import json
 import pandas as pd
 import sys
+from config import config
 
 def country_code_to_name(code):
     if code == "":
@@ -31,7 +32,7 @@ def get_search_results(keyword, page=1):
     'DNT': '1',
     'Connection': 'keep-alive',
     'Referer': 'https://www.importyeti.com/search?q=C%20%26%20C%20Offset%20Printing&page=1',
-    'Cookie': 'cf_clearance=Y8jtQjHE1GaqG4W4CZBBzjgBPG50K9lHGfWfDYaSsPs-1741312540-1.2.1.1-Hym_wqmzSUD5bKPZtlW3NLNbo9PMl7qTzQF_Rl3_d0ovbArmKXWuoJHAc5KXVOF5FxV1dNc58gVG4OBxsyPzo5ZEu2qBq2CCsK4BHvuZ3KcrD.MZ5CTo7cD8Zxi7xieSawtA_S1ObjB3qTR3grTlPsY4B3nWX0ttu.rDPrzb8.8sPsKOaGnVm173iHX9_InHTMqwRjNrkkhGKOCNgTX0RXT1ahKF4fMamjNmAeBua_xbSupMnlgpcoxswnwgaR.YEEojPUkuAtQlsupZL.irRDdWV0lpCItpVvch79kr55nnqoae7NpUvy8GUHPxEZjznwu5M0SGe7ljTlNowXMGDcqwcf4CAkNAsUVezuJ6c9SmYRyrcSg8rWGQBkH3L60KuT8Wj1tNPd06Tpx5xLf3QfY5oM2H.nMsJhhkuq105ME; importyeti_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoiU2FuZG9uZVNtaXR0eUBnbWFpbC5jb20iLCJpZCI6NTQyMjMyLCJleHAiOjE3NDM5MDUwMzV9.H6g-LJjVuc6OEHai4YDG_2Zy-AwBuN0Zx7KAELyYJVk',
+    'Cookie': config.importyeti_cookie_searching,
     'Sec-Fetch-Dest': 'empty',
     'Sec-Fetch-Mode': 'cors',
     'Sec-Fetch-Site': 'same-origin',
@@ -80,7 +81,7 @@ def get_custom_info(url):
     'Accept-Encoding': 'gzip, deflate, br, zstd',
     'DNT': '1',
     'Connection': 'keep-alive',
-    'Cookie': 'cf_clearance=uZ3V9rMtqVEEPYoyPtuFynGe1ZLb7n9xxEmzHRHI1jc-1740644932-1.2.1.1-ui3kUI4NcUq2g3iOhFqJ81aAq5ALVVdSEOE.sRkh3.Uu8bxSyNjK8xAv36PGvgdhOE7pYSriqEvhZwzZblDYtjtJPlHyMrliuRPa5C.dg5WhvHK.UKLhvxLysklzmpni1o1S.wtYHAwPAWpDAFNZlNbjGpC.qylDctPdR7Zj_tns9heeBRA9fc5zko5jyBYE5myNKkw8rmk82hHMhTba.ZaogiEAYIZ5BDbi4mUh0Cg4jGbduStiGuCaDR.RX.1uYeao1yR_kdA6f2FLmGY.INxgrwNaZ0DNTetU7qqJSXs; importyeti_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoiU2FuZG9uZVNtaXR0eUBnbWFpbC5jb20iLCJpZCI6NTQyMjMyLCJleHAiOjE3NDMyMzcyMzd9.zj7tVoS_kGH8tkX0HIb5Gh3-7wzu_R1Opv6VrBp5mtc',
+    'Cookie': config.importyeti_cookie_details,
     'Upgrade-Insecure-Requests': '1',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
@@ -104,10 +105,10 @@ def get_custom_info(url):
             if matches:
                 json_str = matches.group(0)
             else:
-                sys.exit("无对应的数据")
+                return None
     else:
         if not json_str:
-            sys.exit("无对应的数据")
+            return None
 
     data = json.loads(json_str)
 
